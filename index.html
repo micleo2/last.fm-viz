@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script type="text/javascript" src="./d3-v5.min.js"></script>
+  </head>
+  <body>
+    <div id="viz"></div>
+    <script type="text/javascript">
+      var HttpClient = function() {
+        this.get = function(aUrl, aCallback) {
+          var anHttpRequest = new XMLHttpRequest();
+          anHttpRequest.onreadystatechange = function() { 
+            if (anHttpRequest.readyState == 4 && anHttpRequest.status == 200)
+              aCallback(anHttpRequest.responseText);
+          }
+
+          anHttpRequest.open("GET", aUrl, true );            
+          anHttpRequest.send( null );
+        }
+      }
+
+      const client = new HttpClient();
+      const host = "http://ws.audioscrobbler.com/2.0/";
+      const topChartUrl = host + "?method=chart.gettopartists&api_key=" + key + "&format=json"
+      const singleUrl = host + "?method=artist.getinfo&artist=Cher&api_key=" + key + "&format=json"
+      const userTop = host + "?method=user.gettopalbums&user=gleon4&api_key=" + key + "&format=json"
+
+      // client.get(topChartUrl, res => {
+      //   parsed = JSON.parse(res)
+      //   console.log(parsed)
+      //   sorted_artists = parsed.artists.artist.sort((a, b) => parseInt(b.playcount) - parseInt(a.playcount));
+      //   create_tapestry(sorted_artists);
+      //   console.log(sorted_artists)
+      // });
+
+      client.get(userTop, res => {
+        const parsed = JSON.parse(res);
+        const albums = parsed.topalbums.album;
+        albums.forEach(a => { 
+          a.playcount = parseInt(a.playcount);
+          a.imgUrl = a.image[2]["#text"];
+        });
+        window.as = albums;
+        create_tapestry(albums);
+      });
+
+      const width = window.innerWidth * 0.9;
+      const height = window.innerHeight * 0.9;
+
+      var svg = d3.select("#viz")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height);    
+
+      function create_tapestry(albums){
+        const root = albumsToPackedTree(albums);
+        window.root = root;
+        console.log(root)
+
+        const bound = svg
+          .selectAll("g.tile")
+          .data(root.children);
+
+        const newcells = bound
+          .enter()
+          .append("g")
+          .attr("transform", d => coordToTrans(d.x0, d.y0))
+          .attr("class", "tile");
+
+        const accent = d3.scaleOrdinal(d3.schemeCategory10);
+        newcells
+          .append("rect")
+          .attr("width", d => d.x1 - d.x0)
+          .attr("height", d => d.y1 - d.y0)
+          .style("stroke", "black")
+          .style("stroke-width", 3)
+          .style("fill", d => accent(d.data.artist.name))
+          .on("mouseover", function(){
+            d3.select(this).style("fill", "orange");
+          })
+          .on("mouseout", function(d){
+            d3.select(this).style("fill", accent(d.data.artist.name));
+          });
+
+        newcells
+          .append("image")
+          .attr("pointer-events", "None")
+          .attr("href", d => { 
+            return d.data.imgUrl;
+          })
+          .attr("width", d => d.x1 - d.x0)
+          .attr("height", d => d.y1 - d.y0);
+
+        root.children
+      }
+
+      function coordToTrans(x, y){
+        return "translate(" + x + ", " + y + ")";
+      }
+
+      function albumsToPackedTree(albums){
+        const root = d3.hierarchy({
+          "url": "ROOT",
+          "value": 0,
+          "playcount": 0,
+          "children": albums
+        });
+
+        root.sum(node => node.playcount);
+        root.sort((a, b) => b.value - a.value);
+
+        const treemap = d3.treemap()
+          .size([width, height]);
+
+        treemap(root);
+
+        return root;
+      }
+
+    </script>
+  </body>
+</html>
