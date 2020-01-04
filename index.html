@@ -25,14 +25,6 @@
       const singleUrl = host + "?method=artist.getinfo&artist=Cher&api_key=" + key + "&format=json"
       const userTop = host + "?method=user.gettopalbums&user=gleon4&api_key=" + key + "&format=json"
 
-      // client.get(topChartUrl, res => {
-      //   parsed = JSON.parse(res)
-      //   console.log(parsed)
-      //   sorted_artists = parsed.artists.artist.sort((a, b) => parseInt(b.playcount) - parseInt(a.playcount));
-      //   create_tapestry(sorted_artists);
-      //   console.log(sorted_artists)
-      // });
-
       client.get(userTop, res => {
         const parsed = JSON.parse(res);
         const albums = parsed.topalbums.album;
@@ -55,7 +47,6 @@
       function create_tapestry(albums){
         const root = albumsToPackedTree(albums);
         window.root = root;
-        console.log(root)
 
         const bound = svg
           .selectAll("g.tile")
